@@ -584,6 +584,37 @@ function activateSceneState(sceneId, state, isTrue) {
 
     getSetValue(desiredValue)
         .then(desiredValue => {
+
+            //JF
+            /*if(!stateObj.decrease){
+                adapter.log.debug('not decrease')
+            }
+            if(!stateObj.increase) {
+                adapter.log.debug('not increase')
+            }*/
+
+
+            //JF
+            adapter.getForeignState(stateObj.id, (err, state) => {
+                //@TODO: Err abfangen
+                //@TODO: Was wenn State leer ist (!state))
+
+                if(stateObj.decrease!=undefined){
+                    if(state.val>desiredValue && !stateObj.decrease ){//if current value is bigger and no decrease allowed
+                        adapter.log.debug('Begrenze erhoehung auf aktuellen Wert: '+ state)
+                        desiredValue=state.val
+                    }
+                }
+                if(stateObj.increase != undefined){
+                    if(state.val<desiredValue && !stateObj.increase){ //if current value is smaller and no increase allowed
+                        adapter.log.debug('Begrenze Verringerung auf aktuellen Wert: '+ state)
+                        desiredValue=state.val
+                    }
+                }
+            });
+
+
+
             if (delay) {
                 timers[stateObj.id] = timers[stateObj.id] || [];
 
@@ -723,6 +754,7 @@ function activateScene(sceneId, isTrue) {
         });
     }
 }
+
 
 function getState(sceneId, stateNumber, callback) {
     const stateId = scenes[sceneId].native.members[stateNumber].id;
