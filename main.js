@@ -585,92 +585,83 @@ function activateSceneState(sceneId, state, isTrue) {
     getSetValue(desiredValue)
         .then(desiredValue => {
 
-            //JF
-            /*if(!stateObj.decrease){
-                adapter.log.debug('not decrease')
-            }
-            if(!stateObj.increase) {
-                adapter.log.debug('not increase')
-            }*/
 
 
             //JF
             adapter.getForeignState(stateObj.id, (err, state) => {
-                //@TODO: Err abfangen
-                //@TODO: Was wenn State leer ist (!state))
-
                 if(stateObj.decrease!=undefined){
                     if(state.val>desiredValue && !stateObj.decrease ){//if current value is bigger and no decrease allowed
-                        adapter.log.debug('Begrenze erhoehung auf aktuellen Wert: '+ state)
+                        adapter.log.debug('Begrenze erhoehung auf aktuellen Wert: '+ state.val)
                         desiredValue=state.val
                     }
                 }
                 if(stateObj.increase != undefined){
                     if(state.val<desiredValue && !stateObj.increase){ //if current value is smaller and no increase allowed
-                        adapter.log.debug('Begrenze Verringerung auf aktuellen Wert: '+ state)
+                        adapter.log.debug('Begrenze Verringerung auf aktuellen Wert: '+ state.val)
                         desiredValue=state.val
                     }
                 }
-            });
 
+                adapter.log.debug("Es geht weiter mit dem Wert: " + desiredValue)
+         
 
+                if (delay) {
+                    timers[stateObj.id] = timers[stateObj.id] || [];
 
-            if (delay) {
-                timers[stateObj.id] = timers[stateObj.id] || [];
+                    if (stateObj.stopAllDelays && timers[stateObj.id].length) {
+                        adapter.log.debug('Cancel running timers (' + timers[stateObj.id].length + ' for ' + stateObj.id);
+                        timers[stateObj.id].forEach(item => clearTimeout(item.timer));
+                        timers[stateObj.id] = [];
+                    }
+                    tIndex++;
 
-                if (stateObj.stopAllDelays && timers[stateObj.id].length) {
-                    adapter.log.debug('Cancel running timers (' + timers[stateObj.id].length + ' for ' + stateObj.id);
-                    timers[stateObj.id].forEach(item => clearTimeout(item.timer));
-                    timers[stateObj.id] = [];
-                }
-                tIndex++;
+                    // Start timeout
+                    const timer = setTimeout(async (id, setValue, _tIndex) => {
+                        adapter.log.debug('Set delayed state for "' + sceneId + '": ' + id + ' = ' + setValue);
 
-                // Start timeout
-                const timer = setTimeout(async (id, setValue, _tIndex) => {
-                    adapter.log.debug('Set delayed state for "' + sceneId + '": ' + id + ' = ' + setValue);
+                        // execute timeout
+                        if (stateObj.doNotOverwrite) {
+                            adapter.getForeignState(id, (err, state) => {
+                                // Set new state only if differ from desired state
+                                if (!state || state.val !== setValue) {
+                                    adapter.setForeignState(id, setValue);
+                                }
+                            });
+                        } else {
+                            adapter.setForeignState(id, setValue);
+                        }
 
-                    // execute timeout
+                        if (timers[id]) {
+                            // remove timer from the list
+                            for (let r = 0; r < timers[id].length; r++) {
+                                if (timers[id][r].tIndex === _tIndex) {
+                                    timers[id].splice(r, 1);
+                                    break;
+                                }
+                            }
+                        }
+                    }, delay, stateObj.id, desiredValue, tIndex);
+
+                    timers[stateObj.id].push({timer, tIndex});
+                } else {
+                    if (stateObj.stopAllDelays && timers[stateObj.id] && timers[stateObj.id].length) {
+                        adapter.log.debug(`Cancel running timers for "${stateObj.id}" (${timers[stateObj.id].length})`);
+                        timers[stateObj.id].forEach(item => clearTimeout(item.timer));
+                        timers[stateObj.id] = [];
+                    }
+                    // Set desired state
                     if (stateObj.doNotOverwrite) {
-                        adapter.getForeignState(id, (err, state) => {
+                        adapter.getForeignState(stateObj.id, (err, state) => {
                             // Set new state only if differ from desired state
-                            if (!state || state.val !== setValue) {
-                                adapter.setForeignState(id, setValue);
+                            if (!state || state.val !== desiredValue) {
+                                adapter.setForeignState(stateObj.id, desiredValue);
                             }
                         });
                     } else {
-                        adapter.setForeignState(id, setValue);
+                        adapter.setForeignState(stateObj.id, desiredValue);
                     }
-
-                    if (timers[id]) {
-                        // remove timer from the list
-                        for (let r = 0; r < timers[id].length; r++) {
-                            if (timers[id][r].tIndex === _tIndex) {
-                                timers[id].splice(r, 1);
-                                break;
-                            }
-                        }
-                    }
-                }, delay, stateObj.id, desiredValue, tIndex);
-
-                timers[stateObj.id].push({timer, tIndex});
-            } else {
-                if (stateObj.stopAllDelays && timers[stateObj.id] && timers[stateObj.id].length) {
-                    adapter.log.debug(`Cancel running timers for "${stateObj.id}" (${timers[stateObj.id].length})`);
-                    timers[stateObj.id].forEach(item => clearTimeout(item.timer));
-                    timers[stateObj.id] = [];
                 }
-                // Set desired state
-                if (stateObj.doNotOverwrite) {
-                    adapter.getForeignState(stateObj.id, (err, state) => {
-                        // Set new state only if differ from desired state
-                        if (!state || state.val !== desiredValue) {
-                            adapter.setForeignState(stateObj.id, desiredValue);
-                        }
-                    });
-                } else {
-                    adapter.setForeignState(stateObj.id, desiredValue);
-                }
-            }
+            });// callback adapter.getForeignState(stateObj.id, 
         })
         .catch(e =>
             adapter.log.error(`Cannot read setValue from ${desiredValue.replace(/^\s*{{/, '').replace(/}}\s*$/, '')}: ${e}`));
