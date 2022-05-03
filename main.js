@@ -605,62 +605,62 @@ function activateSceneState(sceneId, state, isTrue) {
                 adapter.log.debug("Es geht weiter mit dem Wert: " + desiredValue)
          
 
-                if (delay) {
-                    timers[stateObj.id] = timers[stateObj.id] || [];
+            if (delay) {
+                timers[stateObj.id] = timers[stateObj.id] || [];
 
-                    if (stateObj.stopAllDelays && timers[stateObj.id].length) {
-                        adapter.log.debug('Cancel running timers (' + timers[stateObj.id].length + ' for ' + stateObj.id);
-                        timers[stateObj.id].forEach(item => clearTimeout(item.timer));
-                        timers[stateObj.id] = [];
-                    }
-                    tIndex++;
+                if (stateObj.stopAllDelays && timers[stateObj.id].length) {
+                    adapter.log.debug('Cancel running timers (' + timers[stateObj.id].length + ' for ' + stateObj.id);
+                    timers[stateObj.id].forEach(item => clearTimeout(item.timer));
+                    timers[stateObj.id] = [];
+                }
+                tIndex++;
 
-                    // Start timeout
-                    const timer = setTimeout(async (id, setValue, _tIndex) => {
-                        adapter.log.debug('Set delayed state for "' + sceneId + '": ' + id + ' = ' + setValue);
+                // Start timeout
+                const timer = setTimeout(async (id, setValue, _tIndex) => {
+                    adapter.log.debug('Set delayed state for "' + sceneId + '": ' + id + ' = ' + setValue);
 
-                        // execute timeout
-                        if (stateObj.doNotOverwrite) {
-                            adapter.getForeignState(id, (err, state) => {
-                                // Set new state only if differ from desired state
-                                if (!state || state.val !== setValue) {
-                                    adapter.setForeignState(id, setValue);
-                                }
-                            });
-                        } else {
-                            adapter.setForeignState(id, setValue);
-                        }
-
-                        if (timers[id]) {
-                            // remove timer from the list
-                            for (let r = 0; r < timers[id].length; r++) {
-                                if (timers[id][r].tIndex === _tIndex) {
-                                    timers[id].splice(r, 1);
-                                    break;
-                                }
-                            }
-                        }
-                    }, delay, stateObj.id, desiredValue, tIndex);
-
-                    timers[stateObj.id].push({timer, tIndex});
-                } else {
-                    if (stateObj.stopAllDelays && timers[stateObj.id] && timers[stateObj.id].length) {
-                        adapter.log.debug(`Cancel running timers for "${stateObj.id}" (${timers[stateObj.id].length})`);
-                        timers[stateObj.id].forEach(item => clearTimeout(item.timer));
-                        timers[stateObj.id] = [];
-                    }
-                    // Set desired state
+                    // execute timeout
                     if (stateObj.doNotOverwrite) {
-                        adapter.getForeignState(stateObj.id, (err, state) => {
+                        adapter.getForeignState(id, (err, state) => {
                             // Set new state only if differ from desired state
-                            if (!state || state.val !== desiredValue) {
-                                adapter.setForeignState(stateObj.id, desiredValue);
+                            if (!state || state.val !== setValue) {
+                                adapter.setForeignState(id, setValue);
                             }
                         });
                     } else {
-                        adapter.setForeignState(stateObj.id, desiredValue);
+                        adapter.setForeignState(id, setValue);
                     }
+
+                    if (timers[id]) {
+                        // remove timer from the list
+                        for (let r = 0; r < timers[id].length; r++) {
+                            if (timers[id][r].tIndex === _tIndex) {
+                                timers[id].splice(r, 1);
+                                break;
+                            }
+                        }
+                    }
+                }, delay, stateObj.id, desiredValue, tIndex);
+
+                timers[stateObj.id].push({timer, tIndex});
+            } else {
+                if (stateObj.stopAllDelays && timers[stateObj.id] && timers[stateObj.id].length) {
+                    adapter.log.debug(`Cancel running timers for "${stateObj.id}" (${timers[stateObj.id].length})`);
+                    timers[stateObj.id].forEach(item => clearTimeout(item.timer));
+                    timers[stateObj.id] = [];
                 }
+                // Set desired state
+                if (stateObj.doNotOverwrite) {
+                    adapter.getForeignState(stateObj.id, (err, state) => {
+                        // Set new state only if differ from desired state
+                        if (!state || state.val !== desiredValue) {
+                            adapter.setForeignState(stateObj.id, desiredValue);
+                        }
+                    });
+                } else {
+                    adapter.setForeignState(stateObj.id, desiredValue);
+                }
+            }
             });// callback adapter.getForeignState(stateObj.id, 
         })
         .catch(e =>
